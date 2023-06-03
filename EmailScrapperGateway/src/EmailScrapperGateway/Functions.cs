@@ -25,7 +25,12 @@ namespace EmailScrapperGateway {
             var response = new APIGatewayProxyResponse {
                 StatusCode = (int)HttpStatusCode.OK,
                 Body = myjson,
-                Headers = new Dictionary<string, string> { { "Content-Type", "application/json" } }
+                Headers = new Dictionary<string, string> { 
+                    { "Content-Type", "application/json" },
+                    { "Access-Control-Allow-Origin", "*" },
+                    { "Access-Control-Allow-Methods", "*"},
+                    { "Access-Control-Allow-Headers", "*"},
+                }
             };
 
             return response;
