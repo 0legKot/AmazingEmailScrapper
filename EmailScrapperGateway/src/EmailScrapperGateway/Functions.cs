@@ -37,5 +37,27 @@ namespace EmailScrapperGateway {
 
             return response;
         }
+
+        /// <summary>
+        /// A Lambda function to respond to HTTP Get methods from API Gateway
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns>The API Gateway response.</returns>
+        public APIGatewayProxyResponse AddToQueue(APIGatewayProxyRequest request, ILambdaContext context) {
+            var myjson = request.Body;
+            var response = new APIGatewayProxyResponse {
+                StatusCode = (int)HttpStatusCode.OK,
+                Body = myjson,
+                Headers = new Dictionary<string, string> {
+                    { "Content-Type", "application/json" },
+                    { "Access-Control-Allow-Origin", "*" },
+                    { "Access-Control-Allow-Methods", "*" },
+                    { "Access-Control-Allow-Headers", "*" },
+                    { "Access-Control-Expose-Headers", "*" },
+                }
+            };
+
+            return response;
+        }
     }
 }
