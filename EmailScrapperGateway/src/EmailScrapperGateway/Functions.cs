@@ -1,6 +1,7 @@
 using Amazon.Lambda.APIGatewayEvents;
 using Amazon.Lambda.Core;
 using System.Net;
+using System.Reflection.PortableExecutable;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
@@ -28,8 +29,9 @@ namespace EmailScrapperGateway {
                 Headers = new Dictionary<string, string> { 
                     { "Content-Type", "application/json" },
                     { "Access-Control-Allow-Origin", "*" },
-                    { "Access-Control-Allow-Methods", "*"},
-                    { "Access-Control-Allow-Headers", "*"},
+                    { "Access-Control-Allow-Methods", "*" },
+                    { "Access-Control-Allow-Headers", "*" },
+                    { "Access-Control-Expose-Headers", "*" },
                 }
             };
 
