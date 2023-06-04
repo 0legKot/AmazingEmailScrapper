@@ -46,16 +46,20 @@
         integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
     <script>
         var reqCount = 0;
-        $("#getEmails").on("click", function () {
+        $("#getEmails").on("click", async function () {
             var inputUrls = $("#inputUrls").val().split(/\r?\n/);
             console.log({ "urls": inputUrls });
-            $.post("ourapiurlforaddingtoqueue", { "urls": inputUrls });
+            var response = await fetch("https://3dv952rc7d.execute-api.eu-north-1.amazonaws.com/Prod/AddToQueue", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: inputUrls
+            }); 
+            console.log(await response.text());
         });
-        const updateTable = function (data) {
+        const updateTable = function (json) {
             $("#outputTable td").remove();
-            response = $.parseJSON(data);
-            console.log(response);
-            $.each(response.data, function (i, item) {
+            console.log(json);
+            $.each(json.data, function (i, item) {
                 var $tr = $('<tr>').append(
                     $('<td>').text(i + 1),
                     $('<td>').text(item.url),
@@ -65,15 +69,16 @@
                 $tr.appendTo('#outputTable');
             });
         }
-        setInterval(function () {
+        setInterval(async function () {
             reqCount++;
             if (reqCount > 1) return;
             var inputUrls = $("#inputUrls").val().split(/\r?\n/);
-            fetch("https://3dv952rc7d.execute-api.eu-north-1.amazonaws.com/Prod/GetFromCache", {
+            var response = await fetch("https://3dv952rc7d.execute-api.eu-north-1.amazonaws.com/Prod/GetFromCache", {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },
                 body: inputUrls
-            }).then(data => updateTable(data)); 
+            }); 
+            updateTable(await response.json());
         }, 5000);
     </script>
 </body>
