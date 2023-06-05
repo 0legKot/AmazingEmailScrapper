@@ -3,7 +3,7 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application.",
   "Resources": {
-    "Get": {
+    "GetFromCache": {
       "Type": "AWS::Serverless::Function",
       "Properties": {
         "Architectures": [
@@ -24,6 +24,32 @@
             "Properties": {
               "Path": "/GetFromCache",
               "Method": "POST"
+            }
+          }
+        }
+      }
+    },
+    "GetFromCacheOpt": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "EmailScrapperGateway::EmailScrapperGateway.Functions::Option",
+        "Runtime": "dotnet6",
+        "CodeUri": "",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Role": null,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "Events": {
+          "RootGet": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/GetFromCache",
+              "Method": "OPTIONS"
             }
           }
         }
@@ -50,6 +76,32 @@
             "Properties": {
               "Path": "/AddToQueue",
               "Method": "POST"
+            }
+          }
+        }
+      }
+    },
+    "AddToQueueOpt": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Architectures": [
+          "x86_64"
+        ],
+        "Handler": "EmailScrapperGateway::EmailScrapperGateway.Functions::Option",
+        "Runtime": "dotnet6",
+        "CodeUri": "",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Role": null,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "Events": {
+          "RootGet": {
+            "Type": "Api",
+            "Properties": {
+              "Path": "/AddToQueue",
+              "Method": "OPTIONS"
             }
           }
         }
