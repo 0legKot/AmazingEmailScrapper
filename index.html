@@ -49,7 +49,7 @@
         $("#getEmails").on("click", async function () {
             var inputUrls = $("#inputUrls").val().split(/\r?\n/);
             console.log({ "urls": inputUrls });
-            var response = await fetch("https://3dv952rc7d.execute-api.eu-north-1.amazonaws.com/Prod/AddToQueue", {
+            var response = await fetch("https://3vz4l595je.execute-api.eu-north-1.amazonaws.com/Prod/AddToQueue", {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },
                 body: inputUrls
@@ -73,7 +73,7 @@
             reqCount++;
             if (reqCount > 1) return;
             var inputUrls = $("#inputUrls").val().split(/\r?\n/);
-            var response = await fetch("https://3dv952rc7d.execute-api.eu-north-1.amazonaws.com/Prod/GetFromCache", {
+            var response = await fetch("https://3vz4l595je.execute-api.eu-north-1.amazonaws.com/Prod/GetFromCache", {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },
                 body: inputUrls
