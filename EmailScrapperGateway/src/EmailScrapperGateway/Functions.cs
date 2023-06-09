@@ -41,23 +41,24 @@ namespace EmailScrapperGateway {
         }
 
         private CacheResponse ReadFromCache(string[] URIs) {
-            KeysAndAttributes keysAndAttributes = new() {
-                AttributesToGet = new List<string>() { "Domain", "Emails" },
-                Keys = URIs.Select(uri => new Dictionary<string, AttributeValue>() { { "Domain", new AttributeValue(uri) } }).ToList()
-            };
-            var req = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>() { { DomainEmailsTable, keysAndAttributes } });
+            List<UriInfo> uriInfos = new List<UriInfo>();
             using (AmazonDynamoDBClient dbClient = new AmazonDynamoDBClient()) {
-                var cacheResponse = new CacheResponse {
-                    data = dbClient.BatchGetItemAsync(req).GetAwaiter().GetResult()
-                     .Responses[DomainEmailsTable]
-                     .Select(attributeToValueMap => new UriInfo() {
-                         url = attributeToValueMap["Domain"].S,
-                         emails = attributeToValueMap["Emails"].S.Split(',')
-                     })
-                     .ToArray()
-                };
-                return cacheResponse;
+                for (int i = 0; i <= (URIs.Length - 1)/ 10; i++) {
+                    KeysAndAttributes keysAndAttributes = new() {
+                        AttributesToGet = new List<string>() { "Domain", "Emails" },
+                        Keys = URIs.Skip(i*10).Take(10).Select(uri => new Dictionary<string, AttributeValue>() { { "Domain", new AttributeValue(uri) } }).ToList()
+                    };
+                    var req = new BatchGetItemRequest(new Dictionary<string, KeysAndAttributes>() { { DomainEmailsTable, keysAndAttributes } });
+
+                    uriInfos.AddRange(dbClient.BatchGetItemAsync(req).GetAwaiter().GetResult()
+                         .Responses[DomainEmailsTable]
+                         .Select(attributeToValueMap => new UriInfo() {
+                             url = attributeToValueMap["Domain"].S,
+                             emails = attributeToValueMap["Emails"].S.Split(',')
+                         }).ToArray());
+                }
             }
+            return new CacheResponse() { data = uriInfos.ToArray() };
         }
 
         public class CacheResponse {
@@ -75,7 +76,6 @@ namespace EmailScrapperGateway {
         /// <returns>The API Gateway response.</returns>
         public APIGatewayProxyResponse AddToQueue(APIGatewayProxyRequest request, ILambdaContext context) {
             var body = JsonConvert.DeserializeObject<URIRequestBody>(request.Body);
-            var messageGroupId = Guid.NewGuid().ToString();
             string[] correctUris = body.URIs
                     .Select(uri => GetUri(uri).domain)
                     .Where(domain => domain != null)
@@ -86,17 +86,27 @@ namespace EmailScrapperGateway {
                     .Select(domain => new SendMessageBatchRequestEntry(Guid.NewGuid().ToString(), domain))
                     .ToList();
             if (!messages.Any()) { return GetProxyResponse(JsonConvert.SerializeObject(response)); }
+            HashSet<string> successfulIds = QueueMessages(DomainsToProcessQURL, messages);
+            if (!successfulIds.Any()) { return GetProxyResponse(JsonConvert.SerializeObject(response)); }
+            string[] queuedDomains = messages
+                .Where(requestedMessage => successfulIds.Contains(requestedMessage.Id))
+                .Select(requestedMessage => requestedMessage.MessageBody)
+                .ToArray();
+            response.QueuedDomains = queuedDomains;
+            return GetProxyResponse(JsonConvert.SerializeObject(response));
+        }
+
+        private static HashSet<string> QueueMessages(string url, List<SendMessageBatchRequestEntry> messages) {
             using (var sqsClient = new AmazonSQSClient()) {
-                SendMessageBatchResponse sqsResponse = sqsClient.SendMessageBatchAsync(DomainsToProcessQURL, messages).GetAwaiter().GetResult();
-                HashSet<string> successfulIds = sqsResponse.Successful.Select(successfulResponse => successfulResponse.Id).ToHashSet();
-                if (!successfulIds.Any()) { return GetProxyResponse(JsonConvert.SerializeObject(response)); }
-                string[] queuedDomains = messages
-                    .Where(requestedMessage => successfulIds.Contains(requestedMessage.Id))
-                    .Select(requestedMessage => requestedMessage.MessageBody)
-                    .ToArray();
-                response.QueuedDomains = queuedDomains;
-                return GetProxyResponse(JsonConvert.SerializeObject(response));
-            }
+                HashSet<string> successfulIds = new HashSet<string>();
+                for (int i = 0; i <= (messages.Count - 1) / 10; i++) {
+                    SendMessageBatchResponse sqsResponse = sqsClient
+                        .SendMessageBatchAsync(url, messages.Skip(i * 10).Take(10).ToList())
+                        .GetAwaiter().GetResult();
+                    successfulIds.UnionWith(sqsResponse.Successful.Select(successfulResponse => successfulResponse.Id));
+                }
+                return successfulIds;
+            } 
         }
 
         private static APIGatewayProxyResponse GetProxyResponse(string body) {
@@ -140,6 +150,11 @@ namespace EmailScrapperGateway {
                     using (HttpContent content = response.Content) {
                         string html = await content.ReadAsStringAsync();
                         html = html.Replace("[at]", "@");
+                        html = html.Replace("(at)", "@");
+                        html = html.Replace(" (at) ", "@");
+                        html = html.Replace(" [at] ", "@");
+                        html = html.Replace("[dot]", ".");
+                        html = html.Replace(" [dot] ", ".");
                         string emails = string.Join(",",
                             emailRegex.Matches(html)
                             .Select(match => RemoveWhitespace(match.Value))
@@ -200,9 +215,7 @@ namespace EmailScrapperGateway {
                         List<SendMessageBatchRequestEntry> messages = urisToQueue
                             .Select(uri => new SendMessageBatchRequestEntry(Guid.NewGuid().ToString(), uri))
                             .ToList();
-                        using (var sqsClient = new AmazonSQSClient()) {
-                            await sqsClient.SendMessageBatchAsync(URIsToProcessQURL, messages);
-                        }
+                        QueueMessages(URIsToProcessQURL, messages);
                     }
                 }
             }

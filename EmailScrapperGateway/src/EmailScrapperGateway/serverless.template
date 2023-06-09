@@ -193,7 +193,7 @@
           }
         ],
         "ProvisionedThroughput" : {
-          "ReadCapacityUnits" : "10",
+          "ReadCapacityUnits" : "100",
           "WriteCapacityUnits" : "10"
         },
         "TableName" : "DomainEmails"
